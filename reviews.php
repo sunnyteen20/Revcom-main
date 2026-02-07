@@ -68,6 +68,22 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
         $movie_title = $_POST['movie_title']; 
         $rating = isset($_POST['rating']) ? (int)$_POST['rating'] : 5;
 
+        // ✅ Ensure movie exists in tbl_movie_list (cache table)
+        $movie_check = $conn->prepare("SELECT movie_id FROM tbl_movie_list WHERE movie_id = ?");
+        $movie_check->bind_param("i", $movie_id);
+        $movie_check->execute();
+        $movie_check->store_result();
+
+        if($movie_check->num_rows === 0) {
+            // Movie doesn't exist in cache, insert it
+            $poster_path = isset($_POST['poster_path']) ? $_POST['poster_path'] : NULL;
+            $insert_movie = $conn->prepare("INSERT IGNORE INTO tbl_movie_list (movie_id, title, poster_path) VALUES (?, ?, ?)");
+            $insert_movie->bind_param("iss", $movie_id, $movie_title, $poster_path);
+            $insert_movie->execute();
+            $insert_movie->close();
+        }
+        $movie_check->close();
+
         // ✅ Check if user already reviewed this movie
         $check_stmt = $conn->prepare("SELECT id FROM tbl_movie_review WHERE user_id = ? AND movie_id = ?");
         $check_stmt->bind_param("ii", $user_id, $movie_id);
@@ -112,10 +128,10 @@ if (isset($_GET['status']) && $_GET['status'] == 'success') {
 
 // 5. Fetch Reviews
 $sql = "SELECT r.review, r.rating, r.created_at, u.username 
-        FROM tbl_movie_review r 
-        JOIN users u ON r.user_id = u.id 
-        WHERE r.movie_id = ? 
-        ORDER BY r.created_at DESC";
+    FROM tbl_movie_review r 
+    JOIN users u ON r.user_id = u.id 
+    WHERE r.movie_id = ? AND (r.is_deleted IS NULL OR r.is_deleted = 0)
+    ORDER BY r.created_at DESC";
 
 $stmt_fetch = $conn->prepare($sql);
 $stmt_fetch->bind_param("i", $movie_id);
@@ -356,6 +372,7 @@ $similar_movies = isset($sim_data['results']) ? array_slice($sim_data['results']
             <form method="POST">
                 <input type="hidden" name="movie_id" value="<?= $movie_id; ?>">
                 <input type="hidden" name="movie_title" value="<?= htmlspecialchars($movie['title']); ?>">
+                <input type="hidden" name="poster_path" value="<?= isset($movie['poster_path']) ? htmlspecialchars($movie['poster_path']) : ''; ?>">
                 
             <div class="star-rating">
                 <?php for($i = 10; $i >= 1; $i--): ?>

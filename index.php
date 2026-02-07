@@ -19,29 +19,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
         $signup_message = "Invalid email format";
         $signup_class = "warning";
     } else {
-        // 2. Check if user already exists
-        $check = $conn->prepare("SELECT id FROM users WHERE email=? OR username=?");
-        $check->bind_param("ss", $email, $username);
-        $check->execute();
-        $check->store_result();
+        // 2. Check if username or email already exists
+        $check_user = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        $check_user->bind_param("s", $username);
+        $check_user->execute();
+        $check_user->store_result();
 
-        if($check->num_rows > 0){
+        $check_email = $conn->prepare("SELECT sign_in_id FROM tbl_sign_in WHERE email = ?");
+        $check_email->bind_param("s", $email);
+        $check_email->execute();
+        $check_email->store_result();
+
+        if($check_user->num_rows > 0 || $check_email->num_rows > 0){
             $signup_message = "Username or Email already exists";
             $signup_class = "warning";
         } else {
-            // 3. Insert into Database
+            // 3. Insert into tbl_sign_in then users (to satisfy FK)
             $hashed = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO users(username, name, email, password) VALUES(?,?,?,?)");
-            $stmt->bind_param("ssss", $username, $name, $email, $hashed);
 
-            if($stmt->execute()){
-                $signup_message = "Sign Up successful! You can now Sign In.";
-                $signup_class = "success";
+            $stmt_sign = $conn->prepare("INSERT INTO tbl_sign_in (email, password, is_admin, created_at) VALUES (?, ?, 0, NOW())");
+            $stmt_sign->bind_param("ss", $email, $hashed);
+
+            if($stmt_sign->execute()){
+                $sign_in_id = $conn->insert_id;
+
+                $stmt_user = $conn->prepare("INSERT INTO users(username, name, email, password, sign_in_id) VALUES(?,?,?,?,?)");
+                $stmt_user->bind_param("ssssi", $username, $name, $email, $hashed, $sign_in_id);
+
+                if($stmt_user->execute()){
+                    $signup_message = "Sign Up successful! You can now Sign In.";
+                    $signup_class = "success";
+                } else {
+                    // rollback sign_in on failure
+                    $conn->query("DELETE FROM tbl_sign_in WHERE sign_in_id = " . (int)$sign_in_id);
+                    $signup_message = "Sign Up failed. Try again.";
+                    $signup_class = "warning";
+                }
+                $stmt_user->close();
             } else {
                 $signup_message = "Sign Up failed. Try again.";
                 $signup_class = "warning";
             }
+            $stmt_sign->close();
         }
+        $check_user->close();
+        $check_email->close();
     }
 }
 ?>

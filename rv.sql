@@ -26,6 +26,33 @@ USE `rv`;
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `tbl_movie_list`
+-- This table caches movie data from the API to prevent repeated API calls
+--
+
+CREATE TABLE `tbl_movie_list` (
+  `movie_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `overview` text DEFAULT NULL,
+  `poster_path` varchar(255) DEFAULT NULL,
+  `release_date` date DEFAULT NULL,
+  `last_updated` timestamp DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `created_at` timestamp DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `tbl_movie_list`
+-- Includes all movies that have reviews
+--
+
+INSERT INTO `tbl_movie_list` (`movie_id`, `title`, `overview`, `poster_path`, `release_date`) VALUES
+(83533, 'Avatar: Fire and Ash', NULL, '/5bxrxnRaxZooBAxgUVBZ13dpzC7.jpg', NULL),
+(1168190, 'The Wrecking Crew', NULL, '/gbVwHl4YPSq6BcC92TQpe7qUTh6.jpg', NULL),
+(1234731, 'Anaconda', 'A group of friends facing mid-life crises head to the rainforest with the intention of remaking their favorite movie from their youth, only to find themselves in a fight for their lives against natural disasters, giant snakes and violent criminals.', '/qxMv3HwAB3XPuwNLMhVRg795Ktp.jpg', '2025-12-24');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `tbl_movie_review`
 --
 
@@ -80,6 +107,27 @@ INSERT INTO `tbl_watchlist` (`id`, `user_id`, `movie_id`, `movie_title`, `poster
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `tbl_sign_in`
+-- This table stores authentication records (separate from profile `users` table)
+--
+
+CREATE TABLE `tbl_sign_in` (
+  `sign_in_id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(150) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `is_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `verification_token` varchar(255) DEFAULT NULL,
+  `verification_sent_at` datetime DEFAULT NULL,
+  `verified_at` datetime DEFAULT NULL,
+  `is_admin` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp DEFAULT current_timestamp(),
+  `last_login` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`sign_in_id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+--
 -- Table structure for table `users`
 --
 
@@ -89,7 +137,6 @@ CREATE TABLE `users` (
   `name` varchar(100) NOT NULL,
   `email` varchar(150) NOT NULL,
   `password` varchar(255) NOT NULL,
-  `is_admin` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -109,6 +156,12 @@ INSERT INTO `users` (`id`, `username`, `name`, `email`, `password`, `created_at`
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `tbl_movie_list`
+--
+ALTER TABLE `tbl_movie_list`
+  ADD PRIMARY KEY (`movie_id`);
 
 --
 -- Indexes for table `tbl_movie_review`
@@ -162,13 +215,35 @@ ALTER TABLE `users`
 -- Constraints for table `tbl_movie_review`
 --
 ALTER TABLE `tbl_movie_review`
-  ADD CONSTRAINT `tbl_movie_review_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `tbl_movie_review_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_movie_connection` FOREIGN KEY (`movie_id`) REFERENCES `tbl_movie_list` (`movie_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `tbl_watchlist`
 --
 ALTER TABLE `tbl_watchlist`
   ADD CONSTRAINT `tbl_watchlist_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+-- --------------------------------------------------------
+-- Migrate existing auth data into `tbl_sign_in` and link to `users`
+-- Insert sign-in records from existing `users` rows (preserve passwords)
+-- Note: this keeps the existing `email` and `password` columns in `users` for compatibility,
+-- but also creates `tbl_sign_in` entries and links them via `sign_in_id` on `users`.
+
+INSERT INTO `tbl_sign_in` (`email`, `password`, `is_verified`, `is_admin`, `created_at`)
+SELECT `email`, `password`, 0, 0, `created_at` FROM `users`;
+
+-- Add sign_in_id to users (nullable first), populate from tbl_sign_in, then make NOT NULL and add FK
+ALTER TABLE `users` ADD COLUMN `sign_in_id` INT NULL DEFAULT NULL;
+
+UPDATE `users` u
+JOIN `tbl_sign_in` s ON s.email = u.email
+SET u.sign_in_id = s.sign_in_id;
+
+ALTER TABLE `users` MODIFY `sign_in_id` INT NOT NULL;
+
+ALTER TABLE `users`
+  ADD CONSTRAINT `fk_users_signin` FOREIGN KEY (`sign_in_id`) REFERENCES `tbl_sign_in` (`sign_in_id`) ON DELETE CASCADE;
 
 ALTER TABLE `users`
   ADD COLUMN `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,

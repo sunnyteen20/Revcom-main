@@ -8,9 +8,15 @@ if(!isset($_SESSION['user_id'])){
     exit();
 }
 
-// Check if user is admin
 $user_id = $_SESSION['user_id'];
-$check_admin = $conn->prepare("SELECT is_admin FROM users WHERE id=?");
+
+// Admin flag comes from tbl_sign_in (auth table) joined via users.sign_in_id
+$check_admin = $conn->prepare(
+    "SELECT COALESCE(s.is_admin, 0) as is_admin_flag
+     FROM users u
+     LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id
+     WHERE u.id = ? LIMIT 1"
+);
 $check_admin->bind_param("i", $user_id);
 $check_admin->execute();
 $check_admin->store_result();
@@ -20,10 +26,10 @@ if($check_admin->num_rows == 0){
     exit();
 }
 
-$check_admin->bind_result($is_admin);
+$check_admin->bind_result($is_admin_flag);
 $check_admin->fetch();
 
-if($is_admin != 1){
+if($is_admin_flag != 1){
     header("Location: dashboard.php");
     exit();
 }
@@ -91,16 +97,30 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         // MAKE ADMIN
         if($_POST['action'] == 'make_admin'){
             $admin_user_id = intval($_POST['user_id']);
-            $stmt = $conn->prepare("UPDATE users SET is_admin=1 WHERE id=?");
-            $stmt->bind_param("i", $admin_user_id);
-            if($stmt->execute()){
+            // Promote user by updating authentication table only (single source of truth)
+            $stmt2 = $conn->prepare("SELECT sign_in_id FROM users WHERE id = ? LIMIT 1");
+            $stmt2->bind_param("i", $admin_user_id);
+            $stmt2->execute();
+            $stmt2->bind_result($s_id);
+            $stmt2->fetch();
+            $stmt2->close();
+
+            if(!empty($s_id)){
+                $u = $conn->prepare("UPDATE tbl_sign_in SET is_admin = 1 WHERE sign_in_id = ?");
+                $u->bind_param("i", $s_id);
+                $ok = $u->execute();
+                $u->close();
+            } else {
+                $ok = false;
+            }
+
+            if($ok){
                 $message = "User is now admin";
                 $message_class = "success";
             } else {
                 $message = "Failed to update user";
                 $message_class = "warning";
             }
-            $stmt->close();
         }
         
         // REMOVE ADMIN
@@ -110,16 +130,30 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $message = "Cannot remove yourself as admin";
                 $message_class = "warning";
             } else {
-                $stmt = $conn->prepare("UPDATE users SET is_admin=0 WHERE id=?");
-                $stmt->bind_param("i", $admin_user_id);
-                if($stmt->execute()){
+                // Demote user by updating tbl_sign_in only
+                $stmt2 = $conn->prepare("SELECT sign_in_id FROM users WHERE id = ? LIMIT 1");
+                $stmt2->bind_param("i", $admin_user_id);
+                $stmt2->execute();
+                $stmt2->bind_result($s_id2);
+                $stmt2->fetch();
+                $stmt2->close();
+
+                if(!empty($s_id2)){
+                    $u2 = $conn->prepare("UPDATE tbl_sign_in SET is_admin = 0 WHERE sign_in_id = ?");
+                    $u2->bind_param("i", $s_id2);
+                    $ok = $u2->execute();
+                    $u2->close();
+                } else {
+                    $ok = false;
+                }
+
+                if($ok){
                     $message = "Admin privileges removed";
                     $message_class = "success";
                 } else {
                     $message = "Failed to update user";
                     $message_class = "warning";
                 }
-                $stmt->close();
             }
         }
 
@@ -628,7 +662,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <?php
             $total_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE IFNULL(is_deleted,0)=0")->fetch_assoc()['count'];
             $total_reviews = $conn->query("SELECT COUNT(*) as count FROM tbl_movie_review WHERE IFNULL(is_deleted,0)=0")->fetch_assoc()['count'];
-            $total_admins = $conn->query("SELECT COUNT(*) as count FROM users WHERE is_admin=1 AND IFNULL(is_deleted,0)=0")->fetch_assoc()['count'];
+            $total_admins = $conn->query("SELECT COUNT(*) as count FROM users u JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE COALESCE(s.is_admin,0)=1 AND IFNULL(u.is_deleted,0)=0")->fetch_assoc()['count'];
             $total_watchlist = $conn->query("SELECT COUNT(*) as count FROM tbl_watchlist")->fetch_assoc()['count'];
             ?>
             
@@ -659,7 +693,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <h2>User Management</h2>
             
             <?php
-            $users_result = $conn->query("SELECT username, email, is_admin, created_at, id FROM users WHERE IFNULL(is_deleted,0)=0 ORDER BY created_at DESC");
+            $users_result = $conn->query("SELECT u.username, u.email, COALESCE(s.is_admin,0) AS is_admin, u.created_at, u.id FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=0 ORDER BY u.created_at DESC");
             ?>
             
             <div class="table-wrapper">
@@ -771,7 +805,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <h2>Trash / Archive</h2>
 
             <?php
-            $deleted_users = $conn->query("SELECT id, username, email, is_admin, deleted_at, deleted_by FROM users WHERE IFNULL(is_deleted,0)=1 ORDER BY deleted_at DESC");
+            $deleted_users = $conn->query("SELECT u.id, u.username, u.email, COALESCE(s.is_admin,0) AS is_admin, u.deleted_at, u.deleted_by FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=1 ORDER BY u.deleted_at DESC");
             $deleted_reviews = $conn->query("SELECT r.id, r.movie_title, r.rating, r.review, r.created_at, r.deleted_at, u.username FROM tbl_movie_review r JOIN users u ON r.user_id = u.id WHERE IFNULL(r.is_deleted,0)=1 ORDER BY r.deleted_at DESC");
             ?>
 

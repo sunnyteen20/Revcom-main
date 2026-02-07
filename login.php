@@ -16,36 +16,71 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 
-    $stmt = $conn->prepare("SELECT id, username, password, is_admin FROM users WHERE email=?");
+    // Authenticate against tbl_sign_in
+    $stmt = $conn->prepare("SELECT sign_in_id, password, is_admin FROM tbl_sign_in WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $stmt->store_result();
 
-    // --- FEATURE: SIGN-IN REDIRECT (IF NOT REGISTERED) ---
     if ($stmt->num_rows == 0) {
-        // Redirect to index with error parameter to trigger the "Sign Up" panel switch
         header("Location: index.php?error=notfound");
         exit();
-    } else {
-        $stmt->bind_result($id, $username, $hashed, $is_admin);
-        $stmt->fetch();
-        $hashed = $hashed ?? ''; 
-
-        if (password_verify($password, $hashed)) {
-            $_SESSION['user_id'] = $id;
-            $_SESSION['username'] = $username;
-            $_SESSION['is_admin'] = $is_admin;
-
-            header("Location: dashboard.php");
-            exit();
-        } else {
-            // Case where email exists but password is wrong
-            header("Location: index.php?error=wrongpassword");
-            exit();
-        }
     }
 
+    $stmt->bind_result($sign_in_id, $hashed, $is_admin);
+    $stmt->fetch();
+    $hashed = $hashed ?? '';
+
+    if (!password_verify($password, $hashed)) {
+        header("Location: index.php?error=wrongpassword");
+        exit();
+    }
+
+    // Find associated users.id
+    $stmt_u = $conn->prepare("SELECT id, username FROM users WHERE sign_in_id = ? LIMIT 1");
+    $stmt_u->bind_param("i", $sign_in_id);
+    $stmt_u->execute();
+    $stmt_u->store_result();
+
+    if ($stmt_u->num_rows == 0) {
+        // Create a minimal profile for this sign-in (fallback)
+        $base = strstr($email, '@', true);
+        $username_try = $base ?: 'user' . $sign_in_id;
+        // ensure username uniqueness
+        $orig = $username_try;
+        $i = 1;
+        $check = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        while (true) {
+            $check->bind_param("s", $username_try);
+            $check->execute();
+            $check->store_result();
+            if ($check->num_rows == 0) break;
+            $i++;
+            $username_try = $orig . $i;
+        }
+        $check->close();
+
+        $stmt_create = $conn->prepare("INSERT INTO users (username, name, email, password, sign_in_id) VALUES (?, ?, ?, ?, ?)");
+        $name_for_profile = $username_try;
+        $stmt_create->bind_param("ssssi", $username_try, $name_for_profile, $email, $hashed, $sign_in_id);
+        $stmt_create->execute();
+        $user_id = $conn->insert_id;
+        $username = $username_try;
+        $stmt_create->close();
+    } else {
+        $stmt_u->bind_result($user_id, $username);
+        $stmt_u->fetch();
+    }
+
+    $_SESSION['user_id'] = $user_id;
+    $_SESSION['username'] = $username;
+    $_SESSION['is_admin'] = $is_admin;
+
+    header("Location: dashboard.php");
+    exit();
+
     $stmt->close();
+    $stmt_u->close();
     $conn->close();
 }
 ?>

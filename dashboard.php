@@ -23,14 +23,14 @@ function fetchTmdbMovies($url) {
 
 function getLocalReviewCounts($conn) {
     $counts = [];
-    $res = $conn->query("SELECT movie_id, COUNT(*) as count FROM tbl_movie_review GROUP BY movie_id");
+    $res = $conn->query("SELECT movie_id, COUNT(*) as count FROM tbl_movie_review WHERE (is_deleted IS NULL OR is_deleted = 0) GROUP BY movie_id");
     while($row = $res->fetch_assoc()) { $counts[$row['movie_id']] = $row['count']; }
     return $counts;
 }
 
 function getLocalReviewRatings($conn) {
     $ratings = [];
-    $res = $conn->query("SELECT movie_id, AVG(rating) as avg_rating FROM tbl_movie_review GROUP BY movie_id");
+    $res = $conn->query("SELECT movie_id, AVG(rating) as avg_rating FROM tbl_movie_review WHERE (is_deleted IS NULL OR is_deleted = 0) GROUP BY movie_id");
     while($row = $res->fetch_assoc()) { $ratings[$row['movie_id']] = round($row['avg_rating'], 1); }
     return $ratings;
 }
