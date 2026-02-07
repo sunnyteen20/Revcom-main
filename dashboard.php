@@ -303,6 +303,9 @@ $reviewCounts = getLocalReviewCounts($conn);
 
         <div class="user-actions">
             <a href="watchlist.php" class="icon-btn" title="Watchlist"><i class="fa-solid fa-bookmark"></i></a>
+            <?php if(isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1): ?>
+                <a href="admin.php" class="icon-btn" title="Admin Panel"><i class="fa-solid fa-shield"></i></a>
+            <?php endif; ?>
             <a href="profile.php">
                 <img src="https://ui-avatars.com/api/?name=<?= $_SESSION['username'] ?>&background=dd353d&color=fff" class="profile-pic" alt="Profile">
             </a>

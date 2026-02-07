@@ -89,6 +89,7 @@ CREATE TABLE `users` (
   `name` varchar(100) NOT NULL,
   `email` varchar(150) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `is_admin` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -168,6 +169,16 @@ ALTER TABLE `tbl_movie_review`
 --
 ALTER TABLE `tbl_watchlist`
   ADD CONSTRAINT `tbl_watchlist_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `users`
+  ADD COLUMN `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN `deleted_at` DATETIME NULL DEFAULT NULL,
+  ADD COLUMN `deleted_by` INT NULL DEFAULT NULL;
+
+ALTER TABLE `tbl_movie_review`
+  ADD COLUMN `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN `deleted_at` DATETIME NULL DEFAULT NULL,
+  ADD COLUMN `deleted_by` INT NULL DEFAULT NULL;
 --
 -- Database: `test`
 --

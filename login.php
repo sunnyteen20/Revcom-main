@@ -16,7 +16,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 
-    $stmt = $conn->prepare("SELECT id, username, password FROM users WHERE email=?");
+    $stmt = $conn->prepare("SELECT id, username, password, is_admin FROM users WHERE email=?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $stmt->store_result();
@@ -27,13 +27,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         header("Location: index.php?error=notfound");
         exit();
     } else {
-        $stmt->bind_result($id, $username, $hashed);
+        $stmt->bind_result($id, $username, $hashed, $is_admin);
         $stmt->fetch();
         $hashed = $hashed ?? ''; 
 
         if (password_verify($password, $hashed)) {
             $_SESSION['user_id'] = $id;
-            $_SESSION['username'] = $username; 
+            $_SESSION['username'] = $username;
+            $_SESSION['is_admin'] = $is_admin;
 
             header("Location: dashboard.php");
             exit();
