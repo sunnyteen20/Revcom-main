@@ -32,9 +32,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             $hashed = password_hash($password, PASSWORD_DEFAULT);
 
-            // Insert into tbl_sign_in first
-            $stmt_sign = $conn->prepare("INSERT INTO tbl_sign_in (email, password, is_admin, created_at) VALUES (?, ?, 0, NOW())");
-            $stmt_sign->bind_param("ss", $email, $hashed);
+            // Generate verification token and timestamp
+            $token = bin2hex(random_bytes(16));
+            $sent_at = date('Y-m-d H:i:s');
+
+            // Insert into tbl_sign_in first with verification fields
+            $stmt_sign = $conn->prepare("INSERT INTO tbl_sign_in (email, password, verification_token, verification_sent_at, is_admin, created_at) VALUES (?, ?, ?, ?, 0, NOW())");
+            $stmt_sign->bind_param("ssss", $email, $hashed, $token, $sent_at);
 
             if($stmt_sign->execute()){
                 $sign_in_id = $conn->insert_id;
@@ -44,7 +48,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt_user->bind_param("ssssi", $username, $name, $email, $hashed, $sign_in_id);
 
                 if($stmt_user->execute()){
-                    $message = "Sign Up successful! You can now Sign In.";
+                    // send verification email (best-effort)
+                    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                    $verify_link = "http://" . $host . dirname($_SERVER['PHP_SELF']) . "/verify.php?token=" . $token;
+                    $subject = "Verify your REVCOM account";
+                    $htmlBody = "<p>Hi " . htmlspecialchars($name) . ",</p>\n" .
+                                "<p>Please verify your email by clicking the link below:</p>\n" .
+                                "<p><a href=\"" . htmlspecialchars($verify_link) . "\">Verify your account</a></p>\n" .
+                                "<p>If you didn't sign up, ignore this message.</p>";
+                    $altBody = "Hi $name\n\nPlease verify your email by visiting: " . $verify_link . "\n\nIf you didn't sign up, ignore this message.";
+                    require_once __DIR__ . '/mailer.php';
+                    send_mail($email, $subject, $htmlBody, $altBody);
+
+                    $message = "Sign Up successful! Check your email for a verification link.";
                     $message_class = "success";
                 } else {
                     // rollback sign_in entry on failure to keep consistency
@@ -75,6 +91,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="toast" aria-live="polite" aria-atomic="true"></div>
 <div class="container" id="container">
     <div class="form-container sign-up-container">
         <form action="signup.php" method="POST">
@@ -98,3 +115,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </div>
 </body>
 </html>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var msg = <?= json_encode($message) ?>;
+    var cls = <?= json_encode($message_class) ?>;
+    var t = document.getElementById('toast');
+    if (msg && t) {
+        t.innerHTML = msg;
+        if (cls) t.className = cls + ' show'; else t.className = 'show';
+        setTimeout(function(){ t.classList.remove('show'); }, 8000);
+    }
+    // clear toast when user edits form fields (to avoid stale error messages from autofill)
+    var inputs = document.querySelectorAll('input');
+    function clearToast(){ if (t) t.classList.remove('show'); }
+    inputs.forEach(function(i){ i.addEventListener('focus', clearToast); i.addEventListener('input', clearToast); });
+});
+</script>

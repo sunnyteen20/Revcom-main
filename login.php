@@ -17,22 +17,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Authenticate against tbl_sign_in
-    $stmt = $conn->prepare("SELECT sign_in_id, password, is_admin FROM tbl_sign_in WHERE email = ?");
+    $stmt = $conn->prepare("SELECT sign_in_id, password, is_admin, is_verified FROM tbl_sign_in WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $stmt->store_result();
 
     if ($stmt->num_rows == 0) {
-        header("Location: index.php?error=notfound");
+        header("Location: index.php?error=notfound&email=" . urlencode($email));
         exit();
     }
 
-    $stmt->bind_result($sign_in_id, $hashed, $is_admin);
+    $stmt->bind_result($sign_in_id, $hashed, $is_admin, $is_verified);
     $stmt->fetch();
     $hashed = $hashed ?? '';
 
     if (!password_verify($password, $hashed)) {
-        header("Location: index.php?error=wrongpassword");
+        header("Location: index.php?error=wrongpassword&email=" . urlencode($email));
+        exit();
+    }
+
+    // Require verified account
+    if (empty($is_verified) || $is_verified == 0) {
+        // include email so index can offer resend
+        header("Location: index.php?error=notverified&email=" . urlencode($email));
         exit();
     }
 

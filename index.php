@@ -4,6 +4,42 @@ include "db.php";
 
 $signup_message = "";
 $signup_class = "";
+$signin_message = "";
+$signin_class = "";
+
+// messages from redirects (login / verification)
+if (isset($_GET['error'])) {
+    $err = $_GET['error'];
+    if ($err === 'invalidemail') {
+        $signin_message = 'Invalid email format';
+        $signin_class = 'warning';
+    } elseif ($err === 'notfound') {
+        $signin_message = 'Account not found';
+        $signin_class = 'warning';
+    } elseif ($err === 'wrongpassword') {
+        $signin_message = 'Incorrect password';
+        $signin_class = 'warning';
+    } elseif ($err === 'notverified') {
+        $email_q = isset($_GET['email']) ? htmlspecialchars($_GET['email']) : '';
+        $signin_message = 'Account not verified. <a href="resend_verification.php?email=' . urlencode($email_q) . '">Resend verification</a>';
+        $signin_class = 'warning';
+    }
+}
+
+if (isset($_GET['success']) && $_GET['success'] === 'verified') {
+    $name_q = isset($_GET['name']) ? htmlspecialchars($_GET['name']) : '';
+    if ($name_q) {
+        $signin_message = 'Email for ' . $name_q . ' verified. You may now sign in.';
+    } else {
+        $signin_message = 'Email verified. You may now sign in.';
+    }
+    $signin_class = 'success';
+}
+
+if (isset($_GET['resent']) && $_GET['resent'] == '1') {
+    $signin_message = 'Verification email resent. Check your inbox.';
+    $signin_class = 'success';
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
     $username = trim($_POST['username']);
@@ -37,8 +73,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
             // 3. Insert into tbl_sign_in then users (to satisfy FK)
             $hashed = password_hash($password, PASSWORD_DEFAULT);
 
-            $stmt_sign = $conn->prepare("INSERT INTO tbl_sign_in (email, password, is_admin, created_at) VALUES (?, ?, 0, NOW())");
-            $stmt_sign->bind_param("ss", $email, $hashed);
+            // create verification token and timestamp
+            $token = bin2hex(random_bytes(16));
+            $sent_at = date('Y-m-d H:i:s');
+
+            $stmt_sign = $conn->prepare("INSERT INTO tbl_sign_in (email, password, verification_token, verification_sent_at, is_admin, created_at) VALUES (?, ?, ?, ?, 0, NOW())");
+            $stmt_sign->bind_param("ssss", $email, $hashed, $token, $sent_at);
 
             if($stmt_sign->execute()){
                 $sign_in_id = $conn->insert_id;
@@ -47,7 +87,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
                 $stmt_user->bind_param("ssssi", $username, $name, $email, $hashed, $sign_in_id);
 
                 if($stmt_user->execute()){
-                    $signup_message = "Sign Up successful! You can now Sign In.";
+                    // send verification email
+                    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                    $verify_link = "http://" . $host . dirname($_SERVER['PHP_SELF']) . "/verify.php?token=" . $token;
+                    $subject = "Verify your REVCOM account";
+                    $body = "Hi $name,\n\nPlease verify your email by clicking the link below:\n" . $verify_link . "\n\nIf you didn't sign up, ignore this message.";
+                    require_once __DIR__ . '/mailer.php';
+                    // try sending via SMTP helper; fallback to mail()
+                    $sent = send_mail($email, $subject, $body);
+                    if (!$sent) {
+                        $headers = "From: no-reply@" . $host . "\r\n";
+                        @mail($email, $subject, $body, $headers);
+                    }
+
+                    $signup_message = "Sign Up successful! Check your email for a verification link.";
                     $signup_class = "success";
                 } else {
                     // rollback sign_in on failure
@@ -78,6 +131,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="toast" aria-live="polite" aria-atomic="true"></div>
 <div class="container" id="container">
 
     <div class="form-container sign-up-container">
@@ -103,8 +157,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
     <div class="form-container sign-in-container">
         <form action="login.php" method="POST">
             <h1>Sign In</h1>
-            <input type="email" placeholder="Email" name="email" required/>
+            <input type="email" placeholder="Email" name="email" required value="<?= isset($_GET['email']) ? htmlspecialchars($_GET['email']) : '' ?>"/>
             <input type="password" placeholder="Password" name="password" required/>
+            <?php if(!empty($signin_message)): ?>
+                <div class="message <?= $signin_class ?>"><?= $signin_message ?></div>
+            <?php endif; ?>
             <a href="forgot_password.php">Forgot your password?</a>
             <button type="submit">Sign In</button>
         </form>
@@ -132,5 +189,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
 </footer>
 
 <script src="script.js"></script>
+<div id="toast" aria-live="polite" aria-atomic="true"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var signupMsg = <?= json_encode($signup_message) ?>;
+    var signupCls = <?= json_encode($signup_class) ?>;
+    var signinMsg = <?= json_encode($signin_message) ?>;
+    var signinCls = <?= json_encode($signin_class) ?>;
+    var msg = signupMsg || signinMsg || '';
+    var cls = signupMsg ? signupCls : signinMsg ? signinCls : '';
+    if (msg) {
+        var t = document.getElementById('toast');
+        t.innerHTML = msg;
+        if (cls) t.className = cls + ' show'; else t.className = 'show';
+        // Remove after 8 seconds
+        setTimeout(function(){ t.classList.remove('show'); }, 8000);
+    }
+});
+// enhance: clear toast when user focuses inputs
+document.addEventListener('DOMContentLoaded', function(){
+    var inputs = document.querySelectorAll('input[type="email"], input[type="password"], input[type="text"]');
+    var t = document.getElementById('toast');
+    function clearToast(){ if (t) t.classList.remove('show'); }
+    inputs.forEach(function(i){ i.addEventListener('focus', clearToast); i.addEventListener('input', clearToast); });
+});
+</script>
 </body>
 </html>

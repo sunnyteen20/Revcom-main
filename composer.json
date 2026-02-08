@@ -1,0 +1,8 @@
+{
+  "name": "yourname/revcom-main",
+  "description": "Revcom main app",
+  "license": "proprietary",
+  "require": {
+    "phpmailer/phpmailer": "^7.0"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "yourname/revcom-main",
+  "require": {
+    "phpmailer/phpmailer": "^7.0"
+  }
+}

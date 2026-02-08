@@ -243,6 +243,29 @@ input {
     color: #28a745;
 }
 
+/* Toast notification */
+#toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    background: #ffffff;
+    color: #000000;
+    padding: 14px 18px;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    display: none;
+    z-index: 2000;
+    max-width: 320px;
+}
+#toast.show {
+    display: block;
+    animation: toastIn 300ms ease-out;
+}
+@keyframes toastIn {
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
 
 footer {
     background-color: #000000;
