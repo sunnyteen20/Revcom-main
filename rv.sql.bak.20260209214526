@@ -55,7 +55,7 @@ INSERT INTO `tbl_movie_list` (`movie_id`, `title`, `overview`, `poster_path`, `r
 --
 
 CREATE TABLE `tbl_movie_review` (
-  `review_id` int(11) NOT NULL,
+  `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `movie_id` int(11) NOT NULL,
   `movie_title` varchar(255) DEFAULT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE `tbl_movie_review` (
 -- Dumping data for table `tbl_movie_review`
 --
 
-INSERT INTO `tbl_movie_review` (`review_id`, `user_id`, `movie_id`, `movie_title`, `review`, `created_at`, `rating`, `is_deleted`, `deleted_at`, `deleted_by`) VALUES
+INSERT INTO `tbl_movie_review` (`id`, `user_id`, `movie_id`, `movie_title`, `review`, `created_at`, `rating`, `is_deleted`, `deleted_at`, `deleted_by`) VALUES
 (1, 1, 83533, 'Avatar: Fire and Ash', 'Avatar: Fire and Ash delivers a visually stunning return to Pandora, blending breathtaking effects with a darker, more intense emotional tone. The film expands the world and its conflicts, exploring themes of anger, loss, and survival while maintaining James Cameron’s signature spectacle. Though the story feels familiar at times, the powerful visuals and immersive atmosphere make it a compelling and memorable cinematic experience.', '2026-01-22 12:44:57', 5, 0, NULL, NULL),
 (2, 2, 1168190, 'The Wrecking Crew', 'yey', '2026-02-04 16:40:47', 5, 0, NULL, NULL),
 (3, 2, 83533, 'Avatar: Fire and Ash', 'hell yeah', '2026-02-04 16:41:37', 10, 0, NULL, NULL),
@@ -127,7 +127,7 @@ INSERT INTO `tbl_sign_in` (`sign_in_id`, `email`, `password`, `is_verified`, `ve
 --
 
 CREATE TABLE `tbl_watchlist` (
-  `watchlist_id` int(11) NOT NULL,
+  `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `movie_id` int(11) NOT NULL,
   `movie_title` varchar(255) DEFAULT NULL,
@@ -139,7 +139,7 @@ CREATE TABLE `tbl_watchlist` (
 -- Dumping data for table `tbl_watchlist`
 --
 
-INSERT INTO `tbl_watchlist` (`watchlist_id`, `user_id`, `movie_id`, `movie_title`, `poster_path`, `added_at`) VALUES
+INSERT INTO `tbl_watchlist` (`id`, `user_id`, `movie_id`, `movie_title`, `poster_path`, `added_at`) VALUES
 (1, 1, 840464, 'Greenland 2: Migration', '/1mF4othta76CEXcL1YFInYudQ7K.jpg', '2026-02-04 20:23:21'),
 (3, 8, 1168190, 'The Wrecking Crew', '/gbVwHl4YPSq6BcC92TQpe7qUTh6.jpg', '2026-02-04 22:39:29'),
 (5, 13, 1168190, 'The Wrecking Crew', '/gbVwHl4YPSq6BcC92TQpe7qUTh6.jpg', '2026-02-05 03:08:06');
@@ -180,8 +180,8 @@ INSERT INTO `tbl_users` (`user_id`, `username`, `first_name`, `created_at`, `sig
 (19, 'test_email_2', 'test email two', '2026-02-08 12:04:40', 13, 0, NULL, NULL),
 (21, 'testuser7263', 'Test User', '2026-02-09 11:06:41', 15, 0, NULL, NULL),
 (24, 'test_user_three', 'test user three', '2026-02-09 11:43:56', 18, 0, NULL, NULL),
-(25, 'test_user_four', 'test user four', '2026-02-09 11:47:01', 19, 0, NULL, NULL),
-(26, 'test_five', 'test five', '2026-02-09 11:49:47', 21, 0, NULL, NULL);
+(25, 'test_user_four', 'test user four', 'testfour@gmail.com', '$2y$10$.ZsDqmcX4Bt1JhETG7e8teAA4f1ptqu38RHIeY17m8elJxkbo7aQm', '2026-02-09 11:47:01', 19, 0, NULL, NULL),
+(26, 'test_five', 'test five', 'testfive@gmail.com', '$2y$10$qWIILhuckfUPDUHvagNR0uGqI/BW.BYt/m1M8JbPb/MBT3pQ4OsgS', '2026-02-09 11:49:47', 21, 0, NULL, NULL);
 
 --
 -- Indexes for dumped tables
@@ -197,7 +197,7 @@ ALTER TABLE `tbl_movie_list`
 -- Indexes for table `tbl_movie_review`
 --
 ALTER TABLE `tbl_movie_review`
-  ADD PRIMARY KEY (`review_id`),
+  ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `fk_movie_connection` (`movie_id`);
 
@@ -212,7 +212,7 @@ ALTER TABLE `tbl_sign_in`
 -- Indexes for table `tbl_watchlist`
 --
 ALTER TABLE `tbl_watchlist`
-  ADD PRIMARY KEY (`watchlist_id`),
+  ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`);
 
 --
@@ -231,7 +231,7 @@ ALTER TABLE `tbl_users`
 -- AUTO_INCREMENT for table `tbl_movie_review`
 --
 ALTER TABLE `tbl_movie_review`
-  MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `tbl_sign_in`
@@ -243,7 +243,7 @@ ALTER TABLE `tbl_sign_in`
 -- AUTO_INCREMENT for table `tbl_watchlist`
 --
 ALTER TABLE `tbl_watchlist`
-  MODIFY `watchlist_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `tbl_users`

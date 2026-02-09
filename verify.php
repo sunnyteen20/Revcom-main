@@ -36,7 +36,7 @@ if ($upd->execute()) {
     $upd->close();
     // attempt to resolve a profile name for a friendlier confirmation
     $name = '';
-    $q = $conn->prepare("SELECT name FROM users WHERE sign_in_id = ? LIMIT 1");
+    $q = $conn->prepare("SELECT first_name FROM tbl_users WHERE sign_in_id = ? LIMIT 1");
     if ($q) {
         $q->bind_param('i', $sign_in_id);
         $q->execute();

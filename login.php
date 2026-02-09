@@ -42,8 +42,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 
-    // Find associated users.id
-    $stmt_u = $conn->prepare("SELECT id, username FROM users WHERE sign_in_id = ? LIMIT 1");
+    // Find associated users.user_id
+    $stmt_u = $conn->prepare("SELECT user_id, username FROM tbl_users WHERE sign_in_id = ? LIMIT 1");
     $stmt_u->bind_param("i", $sign_in_id);
     $stmt_u->execute();
     $stmt_u->store_result();
@@ -55,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // ensure username uniqueness
         $orig = $username_try;
         $i = 1;
-        $check = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        $check = $conn->prepare("SELECT user_id FROM tbl_users WHERE username = ?");
         while (true) {
             $check->bind_param("s", $username_try);
             $check->execute();
@@ -66,7 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         $check->close();
 
-        $stmt_create = $conn->prepare("INSERT INTO users (username, name, sign_in_id) VALUES (?, ?, ?)");
+        $stmt_create = $conn->prepare("INSERT INTO tbl_users (username, first_name, sign_in_id) VALUES (?, ?, ?)");
         $name_for_profile = $username_try;
         $stmt_create->bind_param("ssi", $username_try, $name_for_profile, $sign_in_id);
         $stmt_create->execute();

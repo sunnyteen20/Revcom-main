@@ -7,7 +7,7 @@
    - User Management (make/remove admins, delete users)
    - Review Management (delete reviews)
 
-2. **Database Changes** - `is_admin` column added to users table (default: 0)
+2. **Database Changes** - `is_admin` column added to tbl_users table (default: 0)
 
 3. **Login Update** - Stores admin status in session
 
@@ -20,7 +20,7 @@
 Run this SQL query in phpMyAdmin or your database client:
 
 ```sql
-ALTER TABLE users ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE tbl_users ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0;
 ```
 
 ### Step 2: Make Your First Admin
@@ -28,7 +28,7 @@ ALTER TABLE users ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0;
 Run this SQL to make your first admin (example: user with id=1):
 
 ```sql
-UPDATE users SET is_admin=1 WHERE id=1;
+UPDATE tbl_users SET is_admin=1 WHERE user_id=1;
 ```
 
 _Replace id=1 with your actual user ID_
@@ -83,7 +83,7 @@ _Replace id=1 with your actual user ID_
 
 ```
 1. Create a test account
-2. Run: UPDATE users SET is_admin=1 WHERE username='testuser';
+2. Run: UPDATE tbl_users SET is_admin=1 WHERE username='testuser';
 3. Log in with that account
 4. You should see the shield icon on the dashboard
 5. Click the shield to access the admin panel

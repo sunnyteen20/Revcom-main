@@ -22,7 +22,7 @@ if ($action && $sign_in_id) {
         $stmt->close();
     } elseif ($action === 'reject') {
         // Delete the account (sign_in and associated user)
-        $stmt_del_user = $conn->prepare("DELETE FROM users WHERE sign_in_id = ?");
+        $stmt_del_user = $conn->prepare("DELETE FROM tbl_users WHERE sign_in_id = ?");
         $stmt_del_user->bind_param("i", $sign_in_id);
         $stmt_del_user->execute();
         $stmt_del_user->close();
@@ -39,9 +39,9 @@ if ($action && $sign_in_id) {
 
 // Fetch pending accounts (unverified)
 $stmt = $conn->prepare("
-    SELECT s.sign_in_id, s.email, s.created_at, u.username, u.name 
+    SELECT s.sign_in_id, s.email, s.created_at, u.username, u.first_name 
     FROM tbl_sign_in s
-    LEFT JOIN users u ON s.sign_in_id = u.sign_in_id
+    LEFT JOIN tbl_users u ON s.sign_in_id = u.sign_in_id
     WHERE s.is_verified = 0
     ORDER BY s.created_at DESC
 ");
@@ -114,7 +114,7 @@ $stmt->close();
                         <tr>
                             <td><?= htmlspecialchars($account['email']) ?></td>
                             <td><?= htmlspecialchars($account['username'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($account['name'] ?? 'N/A') ?></td>
+                            <td><?= htmlspecialchars($account['first_name'] ?? 'N/A') ?></td>
                             <td><?= $account['created_at'] ?></td>
                             <td>
                                 <div class="actions">

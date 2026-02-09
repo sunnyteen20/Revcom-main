@@ -7,16 +7,19 @@ $message_class = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
-    $name = trim($_POST['name']);
+    $first_name = trim($_POST['first_name']);
+    $middle_name = isset($_POST['middle_name']) ? trim($_POST['middle_name']) : '';
+    $surname = isset($_POST['surname']) ? trim($_POST['surname']) : '';
+    $suffix = isset($_POST['suffix']) ? trim($_POST['suffix']) : '';
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    if(empty($username) || empty($name) || empty($email) || empty($password)){
+    if(empty($username) || empty($first_name) || empty($email) || empty($password)){
         $message = "All fields are required";
         $message_class = "warning";
     } else {
         // Ensure username is unique in users and email is unique in tbl_sign_in
-        $check_user = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        $check_user = $conn->prepare("SELECT user_id FROM tbl_users WHERE username = ?");
         $check_user->bind_param("s", $username);
         $check_user->execute();
         $check_user->store_result();
@@ -48,9 +51,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if($stmt_sign->execute()){
                 $sign_in_id = $conn->insert_id;
 
-                // Insert profile row into users and link sign_in_id
-                $stmt_user = $conn->prepare("INSERT INTO users (username, name, sign_in_id) VALUES (?, ?, ?)");
-                $stmt_user->bind_param("ssi", $username, $name, $sign_in_id);
+                // Insert profile row into tbl_users and link sign_in_id
+                $stmt_user = $conn->prepare("INSERT INTO tbl_users (username, first_name, middle_name, surname, suffix, sign_in_id) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt_user->bind_param("sssssi", $username, $first_name, $middle_name, $surname, $suffix, $sign_in_id);
 
                 if($stmt_user->execute()){
                     // Generate initial math question and store answer hash in verification_token as JSON
@@ -85,6 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $check_email->close();
                 }
             }
+        }
 ?>
 
 <!DOCTYPE html>
@@ -104,8 +108,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <input type="text" placeholder="Username" name="username" required
                    pattern="[A-Za-z0-9_]{3,20}" 
                    title="3-20 characters: letters, numbers, underscores"/>
-            <input type="text" placeholder="Name" name="name" required
-                   pattern="[A-Za-z\s]{3,50}" title="3-50 letters and spaces only"/>
+                 <input type="text" placeholder="First name" name="first_name" required
+                     pattern="[A-Za-z\s]{1,50}" title="First name (required)"/>
+                 <input type="text" placeholder="Middle name (optional)" name="middle_name"
+                     pattern="[A-Za-z\s]{0,50}" title="Middle name (optional)"/>
+                 <input type="text" placeholder="Surname (optional)" name="surname"
+                     pattern="[A-Za-z\s]{0,50}" title="Surname (optional)"/>
+                 <input type="text" placeholder="Suffix (optional)" name="suffix"
+                     pattern="[A-Za-z0-9\.]{0,10}" title="Suffix (optional)"/>
             <input type="email" placeholder="Email" name="email" required/>
             <input type="password" placeholder="Password" name="password" required/>
 

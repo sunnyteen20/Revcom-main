@@ -13,9 +13,9 @@ $user_id = $_SESSION['user_id'];
 // Admin flag comes from tbl_sign_in (auth table) joined via users.sign_in_id
 $check_admin = $conn->prepare(
     "SELECT COALESCE(s.is_admin, 0) as is_admin_flag
-     FROM users u
+     FROM tbl_users u
      LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id
-     WHERE u.id = ? LIMIT 1"
+     WHERE u.user_id = ? LIMIT 1"
 );
 $check_admin->bind_param("i", $user_id);
 $check_admin->execute();
@@ -45,17 +45,17 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     if(isset($_POST['action'])){
         
         // SOFT-DELETE REVIEW (archive)
-        if($_POST['action'] == 'delete_review'){
+            if($_POST['action'] == 'delete_review'){
             $review_id = intval($_POST['review_id']);
             // Use soft-delete if column exists
-            $stmt = $conn->prepare("UPDATE tbl_movie_review SET is_deleted=1, deleted_at=NOW(), deleted_by=? WHERE id=?");
+            $stmt = $conn->prepare("UPDATE tbl_movie_review SET is_deleted=1, deleted_at=NOW(), deleted_by=? WHERE review_id=?");
             $stmt->bind_param("ii", $user_id, $review_id);
             if($stmt->execute()){
                 $message = "Review archived successfully";
                 $message_class = "success";
             } else {
                 // fallback: try hard delete
-                $stmt2 = $conn->prepare("DELETE FROM tbl_movie_review WHERE id=?");
+                $stmt2 = $conn->prepare("DELETE FROM tbl_movie_review WHERE review_id=?");
                 $stmt2->bind_param("i", $review_id);
                 if($stmt2->execute()){
                     $message = "Review deleted successfully (hard delete)";
@@ -76,7 +76,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $message = "Cannot delete yourself";
                 $message_class = "warning";
             } else {
-                $stmt = $conn->prepare("UPDATE users SET is_deleted=1, deleted_at=NOW(), deleted_by=? WHERE id=?");
+                $stmt = $conn->prepare("UPDATE tbl_users SET is_deleted=1, deleted_at=NOW(), deleted_by=? WHERE user_id=?");
                 $stmt->bind_param("ii", $user_id, $del_user_id);
                 if($stmt->execute()){
                     // soft-delete their reviews as well
@@ -98,7 +98,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         if($_POST['action'] == 'make_admin'){
             $admin_user_id = intval($_POST['user_id']);
             // Promote user by updating authentication table only (single source of truth)
-            $stmt2 = $conn->prepare("SELECT sign_in_id FROM users WHERE id = ? LIMIT 1");
+            $stmt2 = $conn->prepare("SELECT sign_in_id FROM tbl_users WHERE user_id = ? LIMIT 1");
             $stmt2->bind_param("i", $admin_user_id);
             $stmt2->execute();
             $stmt2->bind_result($s_id);
@@ -131,7 +131,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $message_class = "warning";
             } else {
                 // Demote user by updating tbl_sign_in only
-                $stmt2 = $conn->prepare("SELECT sign_in_id FROM users WHERE id = ? LIMIT 1");
+                $stmt2 = $conn->prepare("SELECT sign_in_id FROM tbl_users WHERE user_id = ? LIMIT 1");
                 $stmt2->bind_param("i", $admin_user_id);
                 $stmt2->execute();
                 $stmt2->bind_result($s_id2);
@@ -160,7 +160,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         // RESTORE USER
         if($_POST['action'] == 'restore_user'){
             $restore_user_id = intval($_POST['user_id']);
-            $stmt = $conn->prepare("UPDATE users SET is_deleted=0, deleted_at=NULL, deleted_by=NULL WHERE id=?");
+            $stmt = $conn->prepare("UPDATE tbl_users SET is_deleted=0, deleted_at=NULL, deleted_by=NULL WHERE user_id=?");
             $stmt->bind_param("i", $restore_user_id);
             if($stmt->execute()){
                 // restore their reviews
@@ -190,7 +190,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $stmt->execute();
                 $stmt->close();
                 $conn->query("DELETE FROM tbl_watchlist WHERE user_id=$purge_user_id");
-                $stmt2 = $conn->prepare("DELETE FROM users WHERE id=?");
+                $stmt2 = $conn->prepare("DELETE FROM tbl_users WHERE user_id=?");
                 $stmt2->bind_param("i", $purge_user_id);
                 if($stmt2->execute()){
                     $message = "User permanently deleted";
@@ -206,7 +206,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         // RESTORE REVIEW
         if($_POST['action'] == 'restore_review'){
             $restore_review_id = intval($_POST['review_id']);
-            $stmt = $conn->prepare("UPDATE tbl_movie_review SET is_deleted=0, deleted_at=NULL, deleted_by=NULL WHERE id=?");
+            $stmt = $conn->prepare("UPDATE tbl_movie_review SET is_deleted=0, deleted_at=NULL, deleted_by=NULL WHERE review_id=?");
             $stmt->bind_param("i", $restore_review_id);
             if($stmt->execute()){
                 $message = "Review restored from archive";
@@ -221,7 +221,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         // PURGE REVIEW (permanent)
         if($_POST['action'] == 'purge_review'){
             $purge_review_id = intval($_POST['review_id']);
-            $stmt = $conn->prepare("DELETE FROM tbl_movie_review WHERE id=?");
+            $stmt = $conn->prepare("DELETE FROM tbl_movie_review WHERE review_id=?");
             $stmt->bind_param("i", $purge_review_id);
             if($stmt->execute()){
                 $message = "Review permanently deleted";
@@ -661,9 +661,9 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <h2>Dashboard Overview</h2>
             
             <?php
-            $total_users = $conn->query("SELECT COUNT(*) as count FROM users WHERE IFNULL(is_deleted,0)=0")->fetch_assoc()['count'];
+            $total_users = $conn->query("SELECT COUNT(*) as count FROM tbl_users WHERE IFNULL(is_deleted,0)=0")->fetch_assoc()['count'];
             $total_reviews = $conn->query("SELECT COUNT(*) as count FROM tbl_movie_review WHERE IFNULL(is_deleted,0)=0")->fetch_assoc()['count'];
-            $total_admins = $conn->query("SELECT COUNT(*) as count FROM users u JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE COALESCE(s.is_admin,0)=1 AND IFNULL(u.is_deleted,0)=0")->fetch_assoc()['count'];
+            $total_admins = $conn->query("SELECT COUNT(*) as count FROM tbl_users u JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE COALESCE(s.is_admin,0)=1 AND IFNULL(u.is_deleted,0)=0")->fetch_assoc()['count'];
             $total_watchlist = $conn->query("SELECT COUNT(*) as count FROM tbl_watchlist")->fetch_assoc()['count'];
             ?>
             
@@ -694,7 +694,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <h2>User Management</h2>
             
             <?php
-            $users_result = $conn->query("SELECT u.username, s.email, COALESCE(s.is_admin,0) AS is_admin, u.created_at, u.id FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=0 ORDER BY u.created_at DESC");
+            $users_result = $conn->query("SELECT u.username, s.email, COALESCE(s.is_admin,0) AS is_admin, u.created_at, u.user_id FROM tbl_users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=0 ORDER BY u.created_at DESC");
             ?>
             
             <div class="table-wrapper">
@@ -716,23 +716,23 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                             <td><?= $u['is_admin'] ? 'Yes' : 'No' ?></td>
                             <td><?= date('M d, Y', strtotime($u['created_at'])) ?></td>
                             <td>
-                                <?php if($u['id'] != $user_id): ?>
+                                <?php if($u['user_id'] != $user_id): ?>
                                     <?php if($u['is_admin']): ?>
                                         <form method="POST" style="display:inline; margin-right: 6px;">
                                             <input type="hidden" name="action" value="remove_admin">
-                                            <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
+                                            <input type="hidden" name="user_id" value="<?= $u['user_id'] ?>">
                                             <button type="submit" class="btn-success" onclick="return confirm('Remove admin privileges?');"><i class="fa-solid fa-shield-halved"></i> Remove Admin</button>
                                         </form>
                                     <?php else: ?>
                                         <form method="POST" style="display:inline; margin-right: 6px;">
                                             <input type="hidden" name="action" value="make_admin">
-                                            <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
+                                            <input type="hidden" name="user_id" value="<?= $u['user_id'] ?>">
                                             <button type="submit" class="btn-success" onclick="return confirm('Make this user admin?');"><i class="fa-solid fa-shield"></i> Make Admin</button>
                                         </form>
                                     <?php endif; ?>
                                     <form method="POST" style="display:inline; margin-left: 6px;">
                                         <input type="hidden" name="action" value="delete_user">
-                                        <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
+                                        <input type="hidden" name="user_id" value="<?= $u['user_id'] ?>">
                                         <button type="submit" class="btn-danger" onclick="return confirm('Delete this user permanently?');"><i class="fa-solid fa-trash"></i> Delete</button>
                                     </form>
                                 <?php else: ?>
@@ -754,9 +754,9 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             
             <?php
             $reviews_result = $conn->query("
-                SELECT r.id, r.movie_title, r.rating, r.review, r.created_at, u.username 
+                SELECT r.review_id, r.movie_title, r.rating, r.review, r.created_at, u.username 
                 FROM tbl_movie_review r 
-                JOIN users u ON r.user_id = u.id 
+                JOIN tbl_users u ON r.user_id = u.user_id 
                 WHERE IFNULL(r.is_deleted,0)=0
                 ORDER BY r.created_at DESC
             ");
@@ -782,13 +782,13 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                             <td style="white-space: nowrap;"><?= $r['rating'] ?>/10</td>
                             <td>
                                 <?= htmlspecialchars(substr($r['review'], 0, 50)) ?>...
-                                <button type="button" class="btn-success" onclick="viewReview(<?= $r['id'] ?>, '<?= htmlspecialchars(addslashes($r['movie_title'])) ?>', '<?= htmlspecialchars(addslashes($r['username'])) ?>', '<?= $r['rating'] ?>', '<?= htmlspecialchars(addslashes($r['review'])) ?>', '<?= $r['created_at'] ?>');"><i class="fa-solid fa-eye"></i></button>
+                                <button type="button" class="btn-success" onclick="viewReview(<?= $r['review_id'] ?>, '<?= htmlspecialchars(addslashes($r['movie_title'])) ?>', '<?= htmlspecialchars(addslashes($r['username'])) ?>', '<?= $r['rating'] ?>', '<?= htmlspecialchars(addslashes($r['review'])) ?>', '<?= $r['created_at'] ?>');"><i class="fa-solid fa-eye"></i></button>
                             </td>
                             <td style="white-space: nowrap;"><?= date('M d, Y', strtotime($r['created_at'])) ?></td>
                             <td>
                                 <form method="POST" style="display:inline;">
                                     <input type="hidden" name="action" value="delete_review">
-                                    <input type="hidden" name="review_id" value="<?= $r['id'] ?>">
+                                    <input type="hidden" name="review_id" value="<?= $r['review_id'] ?>">
                                     <button type="submit" class="btn-danger" onclick="return confirm('Delete this review?');"><i class="fa-solid fa-trash"></i> Delete</button>
                                 </form>
                             </td>
@@ -806,8 +806,8 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <h2>Trash / Archive</h2>
 
             <?php
-            $deleted_users = $conn->query("SELECT u.id, u.username, s.email, COALESCE(s.is_admin,0) AS is_admin, u.deleted_at, u.deleted_by FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=1 ORDER BY u.deleted_at DESC");
-            $deleted_reviews = $conn->query("SELECT r.id, r.movie_title, r.rating, r.review, r.created_at, r.deleted_at, u.username FROM tbl_movie_review r JOIN users u ON r.user_id = u.id WHERE IFNULL(r.is_deleted,0)=1 ORDER BY r.deleted_at DESC");
+            $deleted_users = $conn->query("SELECT u.user_id, u.username, s.email, COALESCE(s.is_admin,0) AS is_admin, u.deleted_at, u.deleted_by FROM tbl_users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=1 ORDER BY u.deleted_at DESC");
+            $deleted_reviews = $conn->query("SELECT r.review_id, r.movie_title, r.rating, r.review, r.created_at, r.deleted_at, u.username FROM tbl_movie_review r JOIN tbl_users u ON r.user_id = u.user_id WHERE IFNULL(r.is_deleted,0)=1 ORDER BY r.deleted_at DESC");
             ?>
 
             <h3 style="margin-top:0; margin-bottom:10px; color:var(--primary-red);">Deleted Users</h3>
@@ -832,12 +832,12 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                             <td>
                                 <form method="POST" style="display:inline;">
                                     <input type="hidden" name="action" value="restore_user">
-                                    <input type="hidden" name="user_id" value="<?= $du['id'] ?>">
+                                    <input type="hidden" name="user_id" value="<?= $du['user_id'] ?>">
                                     <button type="submit" class="btn-success" onclick="return confirm('Restore this user?');"><i class="fa-solid fa-rotate-left"></i> Restore</button>
                                 </form>
                                 <form method="POST" style="display:inline; margin-left:6px;">
                                     <input type="hidden" name="action" value="purge_user">
-                                    <input type="hidden" name="user_id" value="<?= $du['id'] ?>">
+                                    <input type="hidden" name="user_id" value="<?= $du['user_id'] ?>">
                                     <button type="submit" class="btn-danger" onclick="return confirm('Permanently delete this user? This cannot be undone.');"><i class="fa-solid fa-times"></i> Purge</button>
                                 </form>
                             </td>
@@ -869,12 +869,12 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
                             <td>
                                 <form method="POST" style="display:inline;">
                                     <input type="hidden" name="action" value="restore_review">
-                                    <input type="hidden" name="review_id" value="<?= $dr['id'] ?>">
+                                    <input type="hidden" name="review_id" value="<?= $dr['review_id'] ?>">
                                     <button type="submit" class="btn-success" onclick="return confirm('Restore this review?');"><i class="fa-solid fa-rotate-left"></i> Restore</button>
                                 </form>
                                 <form method="POST" style="display:inline; margin-left:6px;">
                                     <input type="hidden" name="action" value="purge_review">
-                                    <input type="hidden" name="review_id" value="<?= $dr['id'] ?>">
+                                    <input type="hidden" name="review_id" value="<?= $dr['review_id'] ?>">
                                     <button type="submit" class="btn-danger" onclick="return confirm('Permanently delete this review?');"><i class="fa-solid fa-times"></i> Purge</button>
                                 </form>
                             </td>

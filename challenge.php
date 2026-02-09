@@ -96,7 +96,7 @@ if ($created_at) {
     $elapsed = time() - strtotime($created_at);
     if ($elapsed > 60) {
         // Auto reject on timeout
-        $stmt_del_user = $conn->prepare("DELETE FROM users WHERE sign_in_id = ?");
+        $stmt_del_user = $conn->prepare("DELETE FROM tbl_users WHERE sign_in_id = ?");
         $stmt_del_user->bind_param("i", $sign_in_id);
         $stmt_del_user->execute();
         $stmt_del_user->close();
@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
             // Wrong answer - check attempts
             if ($attempt_number >= 3) {
                 // Auto-reject: delete the account
-                $stmt_del_user = $conn->prepare("DELETE FROM users WHERE sign_in_id = ?");
+                $stmt_del_user = $conn->prepare("DELETE FROM tbl_users WHERE sign_in_id = ?");
                 $stmt_del_user->bind_param("i", $sign_in_id);
                 $stmt_del_user->execute();
                 $stmt_del_user->close();

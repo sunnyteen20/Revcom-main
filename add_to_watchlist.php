@@ -9,7 +9,7 @@ if(isset($_POST['movie_id']) && isset($_SESSION['user_id'])){
     $poster = $_POST['poster'];
 
     // Check if it's already in the watchlist
-    $check = $conn->prepare("SELECT id FROM tbl_watchlist WHERE user_id = ? AND movie_id = ?");
+    $check = $conn->prepare("SELECT watchlist_id FROM tbl_watchlist WHERE user_id = ? AND movie_id = ?");
     $check->bind_param("ii", $u_id, $m_id);
     $check->execute();
     $result = $check->get_result();

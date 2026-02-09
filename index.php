@@ -78,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
         $signup_class = "warning";
     } else {
         // 2. Check if username or email already exists
-        $check_user = $conn->prepare("SELECT id FROM users WHERE username = ?");
+        $check_user = $conn->prepare("SELECT user_id FROM tbl_users WHERE username = ?");
         $check_user->bind_param("s", $username);
         $check_user->execute();
         $check_user->store_result();
@@ -105,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
             if($stmt_sign->execute()){
                 $sign_in_id = $conn->insert_id;
 
-                $stmt_user = $conn->prepare("INSERT INTO users(username, name, sign_in_id) VALUES(?,?,?)");
+                $stmt_user = $conn->prepare("INSERT INTO tbl_users(username, first_name, sign_in_id) VALUES(?,?,?)");
                 $stmt_user->bind_param("ssi", $username, $name, $sign_in_id);
 
                 if($stmt_user->execute()){

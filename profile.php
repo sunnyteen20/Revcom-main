@@ -13,13 +13,29 @@ $profile_id = isset($_GET['id']) ? $_GET['id'] : $_SESSION['user_id'];
 $is_owner = ($_SESSION['user_id'] == $profile_id);
 
 // 3. Fetch User Details
-$stmt = $conn->prepare("SELECT u.username, u.name, s.email FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE u.id = ?");
+$stmt = $conn->prepare("SELECT u.username, u.first_name, u.middle_name, u.surname, u.suffix, s.email FROM tbl_users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE u.user_id = ?");
 $stmt->bind_param("i", $profile_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
-// 4. Privacy View: Mask sensitive info if the viewer is NOT the owner
-$display_name = $is_owner ? $user['name'] : "Private User";
+// Handle profile update (owner only)
+if ($is_owner && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $first_name = trim($_POST['first_name']);
+    $middle_name = isset($_POST['middle_name']) ? trim($_POST['middle_name']) : '';
+    $surname = isset($_POST['surname']) ? trim($_POST['surname']) : '';
+    $suffix = isset($_POST['suffix']) ? trim($_POST['suffix']) : '';
+    if (!empty($first_name)) {
+        $up = $conn->prepare("UPDATE tbl_users SET first_name = ?, middle_name = ?, surname = ?, suffix = ? WHERE user_id = ?");
+        $up->bind_param("ssssi", $first_name, $middle_name, $surname, $suffix, $profile_id);
+        $up->execute();
+        // refresh user data
+        $stmt->execute();
+        $user = $stmt->get_result()->fetch_assoc();
+    }
+}
+
+$full_name = trim(implode(' ', array_filter([$user['first_name'], $user['middle_name'], $user['surname'], $user['suffix']])));
+$display_name = $is_owner ? $full_name : "Private User";
 $display_email = $is_owner ? $user['email'] : "********@email.com";
 
 // 5. Fetch Activity History (Reviews)
@@ -51,8 +67,23 @@ $activities = $activity_stmt->get_result();
         <h1><?= htmlspecialchars($user['username']); ?>'s Profile</h1>
         
         <div class="info">
-            <p><strong>Full Name:</strong> <?= htmlspecialchars($display_name); ?></p>
-            <p><strong>Email:</strong> <?= htmlspecialchars($display_email); ?></p>
+            <?php if ($is_owner): ?>
+                <form method="POST">
+                    <label>First name (required)</label>
+                    <input type="text" name="first_name" required value="<?= htmlspecialchars($user['first_name']) ?>" />
+                    <label>Middle name (optional)</label>
+                    <input type="text" name="middle_name" value="<?= htmlspecialchars($user['middle_name']) ?>" />
+                    <label>Surname (optional)</label>
+                    <input type="text" name="surname" value="<?= htmlspecialchars($user['surname']) ?>" />
+                    <label>Suffix (optional)</label>
+                    <input type="text" name="suffix" value="<?= htmlspecialchars($user['suffix']) ?>" />
+                    <button type="submit">Save</button>
+                </form>
+                <p><strong>Email:</strong> <?= htmlspecialchars($display_email); ?></p>
+            <?php else: ?>
+                <p><strong>Full Name:</strong> <?= htmlspecialchars($display_name); ?></p>
+                <p><strong>Email:</strong> <?= htmlspecialchars($display_email); ?></p>
+            <?php endif; ?>
         </div>
 
         <h3>Activity History</h3>

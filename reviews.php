@@ -85,7 +85,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
         $movie_check->close();
 
         // ✅ Check if user already reviewed this movie
-        $check_stmt = $conn->prepare("SELECT id FROM tbl_movie_review WHERE user_id = ? AND movie_id = ?");
+        $check_stmt = $conn->prepare("SELECT review_id FROM tbl_movie_review WHERE user_id = ? AND movie_id = ?");
         $check_stmt->bind_param("ii", $user_id, $movie_id);
         $check_stmt->execute();
         $check_stmt->store_result();
@@ -129,7 +129,7 @@ if (isset($_GET['status']) && $_GET['status'] == 'success') {
 // 5. Fetch Reviews
 $sql = "SELECT r.review, r.rating, r.created_at, u.username 
     FROM tbl_movie_review r 
-    JOIN users u ON r.user_id = u.id 
+    JOIN tbl_users u ON r.user_id = u.user_id 
     WHERE r.movie_id = ? AND (r.is_deleted IS NULL OR r.is_deleted = 0)
     ORDER BY r.created_at DESC";
 
