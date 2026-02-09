@@ -78,15 +78,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt_u->fetch();
     }
 
-    $_SESSION['user_id'] = $user_id;
-    $_SESSION['username'] = $username;
-    $_SESSION['is_admin'] = $is_admin;
+        // Inside login.php after successful authentication
+        $_SESSION['user_id'] = $user_id;       // The profile ID (tbl_users)
+        $_SESSION['sign_in_id'] = $sign_in_id; // The auth ID (tbl_sign_in)
+        $_SESSION['username'] = $username;
+        $_SESSION['is_admin'] = $is_admin;
+
+        $stmt_last = $conn->prepare("UPDATE tbl_sign_in SET last_login = NOW() WHERE sign_in_id = ?");
+        $stmt_last->bind_param("i", $sign_in_id);
+        $stmt_last->execute();
+        $stmt_last->close();
 
     header("Location: dashboard.php");
     exit();
-
-    $stmt->close();
-    $stmt_u->close();
-    $conn->close();
 }
 ?>
