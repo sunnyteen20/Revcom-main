@@ -649,6 +649,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 
     <div class="admin-nav">
         <a href="admin.php?page=dashboard" class="<?= ($page == 'dashboard') ? 'active' : '' ?>"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+        <a href="admin_approvals.php"><i class="fa-solid fa-check-circle"></i> Pending Approvals</a>
         <a href="admin.php?page=users" class="<?= ($page == 'users') ? 'active' : '' ?>"><i class="fa-solid fa-users"></i> Manage Users</a>
         <a href="admin.php?page=reviews" class="<?= ($page == 'reviews') ? 'active' : '' ?>"><i class="fa-solid fa-star"></i> Manage Reviews</a>
         <a href="admin.php?page=trash" class="<?= ($page == 'trash') ? 'active' : '' ?>"><i class="fa-solid fa-trash-can"></i></a>

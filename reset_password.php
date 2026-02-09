@@ -16,15 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $message = "Passwords do not match!";
     } else {
         $hashed = password_hash($new, PASSWORD_DEFAULT);
+        // Update both tables to keep them in sync
         $stmt = $conn->prepare("UPDATE users SET password=? WHERE email=?");
         $stmt->bind_param("ss", $hashed, $_SESSION['reset_email']);
-        if($stmt->execute()){
+        $stmt->execute();
+        $stmt->close();
+        
+        $stmt2 = $conn->prepare("UPDATE tbl_sign_in SET password=? WHERE email=?");
+        $stmt2->bind_param("ss", $hashed, $_SESSION['reset_email']);
+        if($stmt2->execute()){
             unset($_SESSION['reset_email']);
-            header("Location: index.php");
+            header("Location: index.php?success=passwordreset");
             exit();
         } else {
             $message = "Failed to reset password.";
         }
+        $stmt2->close();
     }
 }
 ?>

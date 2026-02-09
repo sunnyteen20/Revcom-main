@@ -36,9 +36,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     }
 
-    // Require verified account
+    // Require verified account (admin approval)
     if (empty($is_verified) || $is_verified == 0) {
-        // include email so index can offer resend
         header("Location: index.php?error=notverified&email=" . urlencode($email));
         exit();
     }

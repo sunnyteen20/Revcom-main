@@ -1,17 +1,24 @@
 <?php
-// resend_verification.php - generate and send a new verification token
+// resend_verification.php - generate fresh verification math challenge
 session_start();
 include 'db.php';
 
-$email = $_GET['email'] ?? ($_POST['email'] ?? '');
-$email = trim($email);
-if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+// Accept both GET parameter and direct sign_in_id
+$sign_in_id = isset($_GET['sign_in_id']) ? (int)$_GET['sign_in_id'] : 0;
+$email = isset($_GET['email']) ? trim($_GET['email']) : '';
+
+// If we have sign_in_id, use it directly
+if ($sign_in_id > 0) {
+    $stmt = $conn->prepare("SELECT sign_in_id, is_verified, verification_token, verification_sent_at FROM tbl_sign_in WHERE sign_in_id = ? LIMIT 1");
+    $stmt->bind_param('i', $sign_in_id);
+} elseif (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    $stmt = $conn->prepare("SELECT sign_in_id, is_verified, verification_token, verification_sent_at FROM tbl_sign_in WHERE email = ? LIMIT 1");
+    $stmt->bind_param('s', $email);
+} else {
     header('Location: index.php?error=notfound');
     exit();
 }
 
-$stmt = $conn->prepare("SELECT sign_in_id, is_verified FROM tbl_sign_in WHERE email = ? LIMIT 1");
-$stmt->bind_param('s', $email);
 $stmt->execute();
 $stmt->store_result();
 
@@ -21,40 +28,55 @@ if ($stmt->num_rows == 0) {
     exit();
 }
 
-$stmt->bind_result($sign_in_id, $is_verified);
+$stmt->bind_result($sign_in_id, $is_verified, $verification_token, $verification_sent_at);
 $stmt->fetch();
 $stmt->close();
 
-if (!empty($is_verified)) {
-    // already verified
-    header('Location: index.php?success=verified');
+// If already verified, redirect to login
+if ($is_verified) {
+    header('Location: index.php?error=alreadyverified');
     exit();
 }
 
-// generate new token
-$token = bin2hex(random_bytes(16));
-$sent_at = date('Y-m-d H:i:s');
-
-$upd = $conn->prepare("UPDATE tbl_sign_in SET verification_token = ?, verification_sent_at = ? WHERE sign_in_id = ?");
-$upd->bind_param('ssi', $token, $sent_at, $sign_in_id);
-if ($upd->execute()) {
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $verify_link = "http://" . $host . dirname($_SERVER['PHP_SELF']) . "/verify.php?token=" . $token;
-    $subject = "Verify your REVCOM account";
-    $body = "Hi,\n\nPlease verify your email by clicking the link below:\n" . $verify_link . "\n\nIf you didn't request this, ignore this message.";
-    require_once __DIR__ . '/mailer.php';
-    $sent = send_mail($email, $subject, $body);
-    if (!$sent) {
-        $headers = "From: no-reply@" . $host . "\r\n";
-        @mail($email, $subject, $body, $headers);
+// Check if a challenge is already in progress (less than 60 seconds old)
+if ($verification_token && strpos($verification_token, 'CHG-') === 0 && $verification_sent_at) {
+    $elapsed = time() - strtotime($verification_sent_at);
+    if ($elapsed < 60) {
+        // Challenge already in progress - don't allow resend
+        header('Location: index.php?error=challengeinprogress');
+        exit();
     }
-    $upd->close();
-    header('Location: index.php?resent=1');
-    exit();
-} else {
-    $upd->close();
-    header('Location: index.php?error=notfound');
-    exit();
 }
+
+// Ensure verification_attempts_sent column exists
+$col_check = $conn->prepare("SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tbl_sign_in' AND COLUMN_NAME = 'verification_attempts_sent'");
+$col_check->execute();
+$col_res = $col_check->get_result()->fetch_assoc();
+$col_check->close();
+if (empty($col_res['cnt'])) {
+    $conn->query("ALTER TABLE tbl_sign_in ADD COLUMN verification_attempts_sent INT NOT NULL DEFAULT 0");
+}
+
+// Generate a fresh question and store token JSON with hashed answer
+$num1 = rand(1,20);
+$num2 = rand(1,20);
+$operator = rand(0,1) ? '+' : '-';
+$correct = ($operator === '+') ? ($num1 + $num2) : ($num1 - $num2);
+$answer_plain = (string)$correct;
+// token format: sign_in_id:answer (plaintext)
+$token_payload = $sign_in_id . ':' . $answer_plain;
+
+$upd = $conn->prepare("UPDATE tbl_sign_in SET verification_token = ?, verification_sent_at = NOW(), verification_attempts_sent = 1 WHERE sign_in_id = ?");
+$upd->bind_param('si', $token_payload, $sign_in_id);
+$upd->execute();
+$upd->close();
+
+// Store the question in session so the challenge page can show it immediately
+$_SESSION['current_question_' . $sign_in_id] = "$num1 $operator $num2";
+$_SESSION['current_answer_' . $sign_in_id] = $correct;
+
+// Redirect to challenge page to start fresh
+header('Location: challenge.php?sign_in_id=' . (int)$sign_in_id);
+exit();
 
 ?>

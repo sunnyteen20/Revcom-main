@@ -20,19 +20,41 @@ if (isset($_GET['error'])) {
         $signin_message = 'Incorrect password';
         $signin_class = 'warning';
     } elseif ($err === 'notverified') {
-        $email_q = isset($_GET['email']) ? htmlspecialchars($_GET['email']) : '';
-        $signin_message = 'Account not verified. <a href="resend_verification.php?email=' . urlencode($email_q) . '">Resend verification</a>';
+        $email_q = isset($_GET['email']) ? urlencode($_GET['email']) : '';
+        if ($email_q) {
+            $signin_message = 'Your account has not been verified yet. <a href="resend_verification.php?email=' . htmlspecialchars($email_q) . '" style="color: #dd353d; text-decoration: underline;">Resend verification challenge</a>';
+        } else {
+            $signin_message = 'Your account has not been verified yet.';
+        }
+        $signin_class = 'warning';
+    } elseif ($err === 'challengeexpired') {
+        $signin_message = 'Time limit expired during account verification. Your account has been deleted. Please sign up again.';
+        $signin_class = 'warning';
+    } elseif ($err === 'challengefailed') {
+        $signin_message = 'You exceeded the maximum number of verification attempts. Your account has been deleted. Please sign up again.';
+        $signin_class = 'warning';
+    } elseif ($err === 'invalid') {
+        $signin_message = 'Invalid request.';
+        $signin_class = 'warning';
+    } elseif ($err === 'alreadyverified') {
+        $signin_message = 'Your account is already verified. Please sign in.';
+        $signin_class = 'success';
+    } elseif ($err === 'challengeinprogress') {
+        $signin_message = 'A verification challenge is already in progress for your account. Please complete it or wait for it to expire (1 minute).';
+        $signin_class = 'warning';
+    } elseif ($err === 'emailnotfound') {
+        $signin_message = 'Email not found in our system.';
         $signin_class = 'warning';
     }
 }
 
 if (isset($_GET['success']) && $_GET['success'] === 'verified') {
-    $name_q = isset($_GET['name']) ? htmlspecialchars($_GET['name']) : '';
-    if ($name_q) {
-        $signin_message = 'Email for ' . $name_q . ' verified. You may now sign in.';
-    } else {
-        $signin_message = 'Email verified. You may now sign in.';
-    }
+    $signin_message = '✓ Account verified successfully! You may now sign in.';
+    $signin_class = 'success';
+}
+
+if (isset($_GET['success']) && $_GET['success'] === 'passwordreset') {
+    $signin_message = '✓ Password reset successfully! You may now sign in with your new password.';
     $signin_class = 'success';
 }
 

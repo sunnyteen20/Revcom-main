@@ -32,13 +32,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             $hashed = password_hash($password, PASSWORD_DEFAULT);
 
-            // Generate verification token and timestamp
-            $token = bin2hex(random_bytes(16));
-            $sent_at = date('Y-m-d H:i:s');
+            // Ensure verification_attempts_sent column exists
+            $col_check = $conn->prepare("SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tbl_sign_in' AND COLUMN_NAME = 'verification_attempts_sent'");
+            $col_check->execute();
+            $col_res = $col_check->get_result()->fetch_assoc();
+            $col_check->close();
+            if (empty($col_res['cnt'])) {
+                $conn->query("ALTER TABLE tbl_sign_in ADD COLUMN verification_attempts_sent INT NOT NULL DEFAULT 0");
+            }
 
-            // Insert into tbl_sign_in first with verification fields
-            $stmt_sign = $conn->prepare("INSERT INTO tbl_sign_in (email, password, verification_token, verification_sent_at, is_admin, created_at) VALUES (?, ?, ?, ?, 0, NOW())");
-            $stmt_sign->bind_param("ssss", $email, $hashed, $token, $sent_at);
+            // Insert into tbl_sign_in first; token will be updated after we have the sign_in_id
+            $stmt_sign = $conn->prepare("INSERT INTO tbl_sign_in (email, password, verification_token, verification_sent_at, is_admin, created_at, verification_attempts_sent) VALUES (?, ?, NULL, NOW(), 0, NOW(), 0)");
+            $stmt_sign->bind_param("ss", $email, $hashed);
 
             if($stmt_sign->execute()){
                 $sign_in_id = $conn->insert_id;
@@ -48,38 +53,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt_user->bind_param("ssssi", $username, $name, $email, $hashed, $sign_in_id);
 
                 if($stmt_user->execute()){
-                    // send verification email (best-effort)
-                    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                    $verify_link = "http://" . $host . dirname($_SERVER['PHP_SELF']) . "/verify.php?token=" . $token;
-                    $subject = "Verify your REVCOM account";
-                    $htmlBody = "<p>Hi " . htmlspecialchars($name) . ",</p>\n" .
-                                "<p>Please verify your email by clicking the link below:</p>\n" .
-                                "<p><a href=\"" . htmlspecialchars($verify_link) . "\">Verify your account</a></p>\n" .
-                                "<p>If you didn't sign up, ignore this message.</p>";
-                    $altBody = "Hi $name\n\nPlease verify your email by visiting: " . $verify_link . "\n\nIf you didn't sign up, ignore this message.";
-                    require_once __DIR__ . '/mailer.php';
-                    send_mail($email, $subject, $htmlBody, $altBody);
+                    // Generate initial math question and store answer hash in verification_token as JSON
+                    $num1 = rand(1,20);
+                    $num2 = rand(1,20);
+                    $operator = rand(0,1) ? '+' : '-';
+                    $correct = ($operator === '+') ? ($num1 + $num2) : ($num1 - $num2);
+                    // token format: sign_in_id:answer (plaintext answer stored)
+                    $token_payload = $sign_in_id . ':' . $correct;
 
-                    $message = "Sign Up successful! Check your email for a verification link.";
-                    $message_class = "success";
+                    // update the tbl_sign_in row with token and attempts = 1
+                    $upd = $conn->prepare("UPDATE tbl_sign_in SET verification_token = ?, verification_sent_at = NOW(), verification_attempts_sent = 1 WHERE sign_in_id = ?");
+                    $upd->bind_param('si', $token_payload, $sign_in_id);
+                    $upd->execute();
+                    $upd->close();
+
+                    // Store the question in session to present on challenge page
+                    $_SESSION['current_question_' . $sign_in_id] = "$num1 $operator $num2";
+                    $_SESSION['current_answer_' . $sign_in_id] = $correct;
+
+                    // Account created - redirect to challenge verification
+                    header("Location: challenge.php?sign_in_id=" . (int)$sign_in_id);
+                    exit;
                 } else {
-                    // rollback sign_in entry on failure to keep consistency
-                    $conn->query("DELETE FROM tbl_sign_in WHERE sign_in_id = " . (int)$sign_in_id);
                     $message = "Sign Up failed. Try again.";
                     $message_class = "warning";
                 }
-                $stmt_user->close();
-            } else {
-                $message = "Sign Up failed. Try again.";
-                $message_class = "warning";
-            }
 
-            $stmt_sign->close();
-        }
-        $check_user->close();
-        $check_email->close();
-    }
-}
+                $stmt_sign->close();
+            }
+            $check_user->close();
+            $check_email->close();
+                }
+            }
 ?>
 
 <!DOCTYPE html>
