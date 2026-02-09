@@ -193,7 +193,7 @@ INSERT INTO `tbl_watchlist` (`watchlist_id`, `user_id`, `movie_id`, `movie_title
 (5, 13, 1168190, 'The Wrecking Crew', '/gbVwHl4YPSq6BcC92TQpe7qUTh6.jpg', '2026-02-05 03:08:06'),
 (6, 8, 1306368, 'The Rip', '/eZo31Dhl5BQ6GfbMNf3oU0tUvPZ.jpg', '2026-02-09 12:50:45'),
 (7, 28, 527969, 'Camp', '/5tmffZhi559MC3FzPi48I7UMJJR.jpg', '2026-02-09 14:25:04'),
-(8, 28, 1419406, 'The Shadow\'s Edge', '/e0RU6KpdnrqFxDKlI3NOqN8nHL6.jpg', '2026-02-09 14:26:20');
+(8, 28, 1419406, 'The Shadow\`s Edge', '/e0RU6KpdnrqFxDKlI3NOqN8nHL6.jpg', '2026-02-09 14:26:20');
 
 --
 -- Indexes for dumped tables
