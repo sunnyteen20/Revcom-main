@@ -133,9 +133,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['answer'])) {
             $expected_answer = $_SESSION['current_answer_' . $sign_in_id] ?? $stored_answer;
             // Compare numerically to tolerate formatting differences
             if ((int)$expected_answer === (int)$submitted_answer) {
-                // Correct answer - verify the account
-            $stmt_verify = $conn->prepare("UPDATE tbl_sign_in SET is_verified = 1, verified_at = NOW(), verification_token = NULL WHERE sign_in_id = ?");
-            $stmt_verify->bind_param("i", $sign_in_id);
+                // Correct answer - verify the account and store token as sign_in_id:answer
+            $verified_token = $sign_in_id . ':' . (int)$expected_answer;
+            $stmt_verify = $conn->prepare("UPDATE tbl_sign_in SET is_verified = 1, verified_at = NOW(), verification_token = ? WHERE sign_in_id = ?");
+            $stmt_verify->bind_param("si", $verified_token, $sign_in_id);
             $stmt_verify->execute();
             $stmt_verify->close();
 

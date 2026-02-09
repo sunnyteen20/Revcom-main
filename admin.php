@@ -694,7 +694,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <h2>User Management</h2>
             
             <?php
-            $users_result = $conn->query("SELECT u.username, u.email, COALESCE(s.is_admin,0) AS is_admin, u.created_at, u.id FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=0 ORDER BY u.created_at DESC");
+            $users_result = $conn->query("SELECT u.username, s.email, COALESCE(s.is_admin,0) AS is_admin, u.created_at, u.id FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=0 ORDER BY u.created_at DESC");
             ?>
             
             <div class="table-wrapper">
@@ -806,7 +806,7 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <h2>Trash / Archive</h2>
 
             <?php
-            $deleted_users = $conn->query("SELECT u.id, u.username, u.email, COALESCE(s.is_admin,0) AS is_admin, u.deleted_at, u.deleted_by FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=1 ORDER BY u.deleted_at DESC");
+            $deleted_users = $conn->query("SELECT u.id, u.username, s.email, COALESCE(s.is_admin,0) AS is_admin, u.deleted_at, u.deleted_by FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE IFNULL(u.is_deleted,0)=1 ORDER BY u.deleted_at DESC");
             $deleted_reviews = $conn->query("SELECT r.id, r.movie_title, r.rating, r.review, r.created_at, r.deleted_at, u.username FROM tbl_movie_review r JOIN users u ON r.user_id = u.id WHERE IFNULL(r.is_deleted,0)=1 ORDER BY r.deleted_at DESC");
             ?>
 

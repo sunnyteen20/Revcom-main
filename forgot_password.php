@@ -6,7 +6,7 @@ $message = "";
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     
-    $stmt = $conn->prepare("SELECT id FROM users WHERE email=?");
+    $stmt = $conn->prepare("SELECT sign_in_id FROM tbl_sign_in WHERE email=?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $stmt->store_result();

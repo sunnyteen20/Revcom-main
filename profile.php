@@ -13,7 +13,7 @@ $profile_id = isset($_GET['id']) ? $_GET['id'] : $_SESSION['user_id'];
 $is_owner = ($_SESSION['user_id'] == $profile_id);
 
 // 3. Fetch User Details
-$stmt = $conn->prepare("SELECT username, name, email FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT u.username, u.name, s.email FROM users u LEFT JOIN tbl_sign_in s ON u.sign_in_id = s.sign_in_id WHERE u.id = ?");
 $stmt->bind_param("i", $profile_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();

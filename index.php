@@ -105,8 +105,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['username'])) {
             if($stmt_sign->execute()){
                 $sign_in_id = $conn->insert_id;
 
-                $stmt_user = $conn->prepare("INSERT INTO users(username, name, email, password, sign_in_id) VALUES(?,?,?,?,?)");
-                $stmt_user->bind_param("ssssi", $username, $name, $email, $hashed, $sign_in_id);
+                $stmt_user = $conn->prepare("INSERT INTO users(username, name, sign_in_id) VALUES(?,?,?)");
+                $stmt_user->bind_param("ssi", $username, $name, $sign_in_id);
 
                 if($stmt_user->execute()){
                     // send verification email

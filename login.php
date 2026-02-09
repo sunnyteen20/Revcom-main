@@ -66,9 +66,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         $check->close();
 
-        $stmt_create = $conn->prepare("INSERT INTO users (username, name, email, password, sign_in_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt_create = $conn->prepare("INSERT INTO users (username, name, sign_in_id) VALUES (?, ?, ?)");
         $name_for_profile = $username_try;
-        $stmt_create->bind_param("ssssi", $username_try, $name_for_profile, $email, $hashed, $sign_in_id);
+        $stmt_create->bind_param("ssi", $username_try, $name_for_profile, $sign_in_id);
         $stmt_create->execute();
         $user_id = $conn->insert_id;
         $username = $username_try;

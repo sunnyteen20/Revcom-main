@@ -154,8 +154,6 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `username` varchar(50) NOT NULL,
   `name` varchar(100) NOT NULL,
-  `email` varchar(150) NOT NULL,
-  `password` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `sign_in_id` int(11) NOT NULL,
   `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
@@ -167,17 +165,17 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `name`, `email`, `password`, `created_at`, `sign_in_id`, `is_deleted`, `deleted_at`, `deleted_by`) VALUES
-(1, 'mrnmtchell', 'Maureene Mitchell', 'mtmitchell@gmail.com', '$2y$10$ZbNepJeaDIt5K2XYKM2CxOiyTMwsuu3mz.p6dnDyDvkwhGpD1xMta', '2026-01-22 10:53:53', 1, 0, NULL, NULL),
-(2, 'ace_grnd', 'Mary Althea Grande', 'maryaltheagrande@gmail.com', '$2y$10$6QJwC5dtIIjzwxFKQqJI9ut18Aa8GwZCvLPZnA6UpyRRAUzJiISeq', '2026-02-04 16:38:42', 2, 0, NULL, NULL),
-(8, 'snowlax', 'Samira Papa', 'samirasnoe7@gmail.com', '$2y$10$h9LEPatXm6EfygaoHfuDH.O/O26LLB/sJGEYckFpGU71e4Mdbkfu2', '2026-02-04 22:36:01', 3, 0, NULL, NULL),
-(9, 'testuser', 'test', 'test@gmail.com', '$2y$10$J2be1GxmytUGdEvI2rXk0e4YY5nrdM7JdTHHJMM4OQXHDqq/1V2TG', '2026-02-04 23:05:58', 4, 0, NULL, NULL),
-(11, 'eyjieee', 'Althea Grande', 'grandealthea2@gmail.com', '$2y$10$QeeTR0k5malnhG8gRHilSOumMC566L7NKV4NygmZ9Clb9PvKHkRwW', '2026-02-05 02:33:48', 5, 0, NULL, NULL),
-(13, 'julia_b', 'Julia Bautista', 'juliabautista@gmail.com', '$2y$10$FqTx5xgsKX4i95rhUDpoZe7KMcnw0nanNcF/enIKhicqhW.2r97MK', '2026-02-05 02:44:51', 7, 0, NULL, NULL),
-(14, 'test_user2', 'test user', 'testuser2@gmail.com', '$2y$10$xsy.gpDFYPuEllrg0BnDReZK5.wsFqsBh5vT/yKMvhCXK3SfD6me.', '2026-02-07 09:56:47', 8, 0, NULL, NULL),
-(19, 'test_email_2', 'test email two', 'irapapa7@gmail.com', '$2y$10$USVwnOQnOWqeQyxvXsWqVOgxjSDmbQAZUsCtycLqIMS38Mvwh6gm.', '2026-02-08 12:04:40', 13, 0, NULL, NULL),
-(21, 'testuser7263', 'Test User', 'test+1770635201@example.com', '$2y$10$harBKmyAAEoHPJKInIXZ3OzIHAS/BFrAsPNosWfPZmxLvhYsNiXfO', '2026-02-09 11:06:41', 15, 0, NULL, NULL),
-(24, 'test_user_three', 'test user three', 'testuser3@gmail.com', '$2y$10$2aC2hly5mOx/xb.H2Hvz6eP7kMwkz9vog8jWY7D6WelWW.m5HWGci', '2026-02-09 11:43:56', 18, 0, NULL, NULL),
+INSERT INTO `users` (`id`, `username`, `name`, `created_at`, `sign_in_id`, `is_deleted`, `deleted_at`, `deleted_by`) VALUES
+(1, 'mrnmtchell', 'Maureene Mitchell', '2026-01-22 10:53:53', 1, 0, NULL, NULL),
+(2, 'ace_grnd', 'Mary Althea Grande', '2026-02-04 16:38:42', 2, 0, NULL, NULL),
+(8, 'snowlax', 'Samira Papa', '2026-02-04 22:36:01', 3, 0, NULL, NULL),
+(9, 'testuser', 'test', '2026-02-04 23:05:58', 4, 0, NULL, NULL),
+(11, 'eyjieee', 'Althea Grande', '2026-02-05 02:33:48', 5, 0, NULL, NULL),
+(13, 'julia_b', 'Julia Bautista', '2026-02-05 02:44:51', 7, 0, NULL, NULL),
+(14, 'test_user2', 'test user', '2026-02-07 09:56:47', 8, 0, NULL, NULL),
+(19, 'test_email_2', 'test email two', '2026-02-08 12:04:40', 13, 0, NULL, NULL),
+(21, 'testuser7263', 'Test User', '2026-02-09 11:06:41', 15, 0, NULL, NULL),
+(24, 'test_user_three', 'test user three', '2026-02-09 11:43:56', 18, 0, NULL, NULL),
 (25, 'test_user_four', 'test user four', 'testfour@gmail.com', '$2y$10$.ZsDqmcX4Bt1JhETG7e8teAA4f1ptqu38RHIeY17m8elJxkbo7aQm', '2026-02-09 11:47:01', 19, 0, NULL, NULL),
 (26, 'test_five', 'test five', 'testfive@gmail.com', '$2y$10$qWIILhuckfUPDUHvagNR0uGqI/BW.BYt/m1M8JbPb/MBT3pQ4OsgS', '2026-02-09 11:49:47', 21, 0, NULL, NULL);
 

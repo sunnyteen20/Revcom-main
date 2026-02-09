@@ -49,8 +49,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $sign_in_id = $conn->insert_id;
 
                 // Insert profile row into users and link sign_in_id
-                $stmt_user = $conn->prepare("INSERT INTO users (username, name, email, password, sign_in_id) VALUES (?, ?, ?, ?, ?)");
-                $stmt_user->bind_param("ssssi", $username, $name, $email, $hashed, $sign_in_id);
+                $stmt_user = $conn->prepare("INSERT INTO users (username, name, sign_in_id) VALUES (?, ?, ?)");
+                $stmt_user->bind_param("ssi", $username, $name, $sign_in_id);
 
                 if($stmt_user->execute()){
                     // Generate initial math question and store answer hash in verification_token as JSON
